@@ -74,7 +74,7 @@ Interpretation:
 ## How to View
 For an interactive and formatted report:
 - View the rendered HTML file directly:  
-  👉 [https://nlinh03101-art.github.io/price-elasticity-estimation/]
+  👉 [[https://nlinh03101-art.github.io/price-elasticity-estimation](https://nlinh03101-art.github.io/Price-Elasticity-Estimation/)/]
 
 The `.Rmd` source file is provided for full reproducibility.
 
