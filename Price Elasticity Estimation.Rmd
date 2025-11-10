@@ -1,0 +1,529 @@
+---
+title: "Price Elasticity Estimation"
+author: "Ngoc Linh Dao"
+date: "2024-17-01"
+output:
+  html_document:
+    theme: cosmo
+    toc: yes
+    toc_float:
+      collapsed: true
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r}
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+```
+
+# Estimating Price Elasticities for Macroeconomic Data
+
+```{r, results="asis"}
+dat <- read.csv("chicken.csv")
+```
+
+Given model
+
+$Y = ß_0 . income^{ß_1} . pchick^{ß_2} . pbeef^{ß_3}. ppork^{ß_4} . e$
+
+------------------------------------------------------------------------
+
+## Task 1: Scatter plot for price of chicken versus demand for chicken
+
+-   Create scatter plot on original scale
+
+```{r, results="hold"}
+plot1 <- plot(consum ~ pchick, xlab = 'price of chicken', ylab = 'demand for chicken', data = dat)
+abline(lm(consum ~ pchick, data=dat), col = "pink")
+grid()
+```
+
+-   Create scatter plot on log-log scale
+
+```{r, results="hold"}
+plot2 <- plot(log(consum) ~ log(pchick), xlab = 'price of chicken', ylab = 'demand for chicken', data = dat)
+abline(lm(log(consum)~log(pchick), data = dat), col = "pink")
+grid()
+```
+
+**Comment:**
+
+-   In the case where we don't take into account any other variables, we
+    can see from the plot that the consumption increases as the price of
+    chicken increases.
+
+-   On the original scales, the data are plotted as-is, according to the
+    observed absolute values of dependent and independent variables.
+
+-   On the log-log scales, both the x-axis and y-axis are transformed
+    using a logarithmic scale, emphasizing on the relative, rather than
+    the absolute changes, of said variables.
+
+-   As seen on the scatter plots, the plot on original scale follows a
+    similar pattern to that of the plot on the log-log scale, suggesting
+    an exponential relationship between the variables as the relative
+    changes are consistent with the absolute changes.
+
+-   However, due to the logarithmic transformation, the higher values
+    are more compressed and the lower values expanded.
+
+------------------------------------------------------------------------
+
+## Task 2: Rewrite the model in (1) as log Y = β0 + . . ..
+
+$log(consum) = ß_0 + ß_1*log(income) + ß_2*log(pchick) + ß_3*log(pbeef) + ß_4*log(ppork) + u$
+
+------------------------------------------------------------------------
+
+## Task 3: OLS Estimation
+
+***a) OLS estimators***
+
+```{r results='hold'}
+mod1<-lm(log(consum) ~ log(income) + log(pchick) + log(pbeef) + log(ppork) , data = dat)
+summary(mod1)
+```
+
+-   Estimators of the model:
+
+$log(Y) = 2.18979 + 0.34256*log(income) - 0.50459*log(pchick) + 0.09110*log(pbeef) + 0.14855*log(ppork)$
+
+***b) The change of demand for chicken (consum) when the price of pork
+(ppork) rises by 1% on average, ceteris paribus***
+
+The coefficient of log(ppork) = 0.14855
+
+That means, that a 1% increase in price of pork leads to a 0.14855%
+increase on average in demand of chicken
+
+***c) The change of demand for chicken (consum) when price of chicken
+(pchick) decreases by 3% on average, ceteris paribus***
+
+The coefficient of log(pchick) = -0.50459
+
+That means, that a 3% decrease in price of chicken leads to an expected
+change of a 1.51% increase in demand of chicken
+
+------------------------------------------------------------------------
+
+## Task 4: Predict demand for chicken when the income = 2400, pchick = 52, ppork = 171.5, and pbeef = 313
+
+```{r results = 'hold'}
+Y4<-2.18979 + 0.34256*log(2400) - 0.50459*log(52) + 0.09110*log(313) + 0.14855*log(171.5)
+exp(Y4)
+```
+
+If values of the variables equal to the given numbers, then demand of
+chicken will be 65.66 lb
+
+------------------------------------------------------------------------
+
+## Task 5: Coefficient of determination
+
+***a) Compute sample correlation between fitted values and
+observations***
+
+-   Compute the correlation between fitted values and observed values
+
+```{r results = 'hold'}
+y_hat <- fitted.values(mod1)
+cor(y_hat,log(dat$consum))
+```
+
+-   Compute coefficient of determination R^2^
+
+```{r results = 'hold'}
+R_squared <- cor(y_hat,log(dat$consum))^2
+```
+
+***b) Compute total sum of squares (TSS), regression sum of squares
+(RSS), sum of squared residuals (SSR)***
+
+```{r results = 'hold'}
+y_mean <- mean(log(dat$consum))
+print (y_mean)
+```
+
+-   Compute total sum of squares:
+
+```{r results = 'hold'}
+TSS <- sum(((log(dat$consum)-y_mean)^2))
+print (TSS)
+```
+
+-   Compute regression sum of squares:
+
+```{r results = 'hold'}
+RSS <- sum((fitted(mod1) - mean(log(dat$consum)))^2)
+print (RSS)
+```
+
+-   Compute sum of squared residuals:
+
+```{r results = 'hold'}
+SSR <- sum(mod1$residuals^2) 
+print (SSR)
+```
+
+-   Double check if SSR + RSS sum up to TSS
+
+```{r results = 'hold'}
+TSS_check = SSR + RSS 
+print (TSS_check)
+```
+
+-   Calculate R^2^ again using R^2^ = $RSS/TSS$ = $1 - (SSR/TSS)$
+
+```{r results = 'hold'}
+RSS/TSS
+```
+
+-   Calculate Adjusted $R^2$ using $$
+    \text{Adjusted } R^2 = 1 - \frac{(n - k - 1)(1 - R^2)}{(n - 1)}
+    $$
+
+Where: - $R^2$ is the regular R-squared value. - $n$ is the number of
+observations. - $k$ is the number of variables (excluding the
+intercept).
+
+```{r}
+k <- 4
+n <- 23
+Adjusted_Rsquared <- 1 - ((1 - R_squared) * (n - 1) / (n - k - 1)) 
+```
+
+***c) Find R^2^ and Adjusted R^2^ in summary***
+
+```{r}
+summary(mod1)$r.squared
+summary(mod1)$adj.r.squared
+```
+
+------------------------------------------------------------------------
+
+## Task 6: Statistical properties
+
+***a) Compute the estimate of variance of residuals***
+
+```{r results='hold'}
+summary(mod1)$sigma^2
+```
+
+***b) Put together covariance matrix of the OLS estimators of the
+parameters β1, . . . , β4***
+
+```{r results='hold'}
+vcov(mod1)
+cov2cor(vcov(mod1))
+```
+
+------------------------------------------------------------------------
+
+## Task 7: Single coefficient test: State null hypothesis, significance level, test statistic, p value, and their interpretation
+
+```{r results = 'hold'}
+summary(mod1)
+```
+
+***a) Does the price of pork have a significant impact on the demand for
+chicken?***
+
+**H0 = The variable ppork has no impact on consum (demand of chicken)
+ceteris paribus**
+
+**H1 = The variable ppork has significant impact on the demand for
+chicken**
+
+-   Significance level = 0.05
+
+*Interpretation: There is always probability of rejecting the null
+hypothesis when it is indeed true (type I error), therefore, the
+significance level acts like a kind of threshold to help make the
+decision of whether or not the null hypothesis should be kept or
+rejected. When the p-value is bigger than the significant level, this
+means that there are more than 5% of committing the mentioned type I
+error, meaning the null hypothesis should NOT be rejected in such a
+case.*
+
+-   test statistic: t-value = 1.490
+
+*Interpretation: the farther away the estimated coefficient is from 0,
+and the more likely it is to be statistically significant. For the
+decision to be more precise, we will compare the absolute value of t to
+the critical value from the t-distribution table*
+
+-   degree of freedom = n - ncol = 23 - 4 - 1 = 18
+
+-   critical value from t-distribution table is 2.101
+
+-   \|t\| \< c -\>
+
+*Interpretation: do NOT reject H0 -\> the impact of ppork on consum
+might not be significant*
+
+-   p-value: 0.153452
+
+*Interpretation: a measure to help you determine statistical
+significance. In this case, we have p-value = 0.15, which is bigger than
+the significance level and therefore, we can NOT reject the null
+hypothesis, meaning, again, the impact of price of pork on demand of
+chicken is not significant.*
+
+***b) Does the income have a significant impact on the demand for
+chicken?***
+
+**H0 = The variable income has no impact on the demand of chicken,
+ceteris paribus**
+
+**H1 = The variable income has a significant impact on demand of
+chicken, ceteris paribus**
+
+-   Significance level = 0.05
+
+-   test statistic: t-value 4.114
+
+-   \|t\| \> c
+
+*Interpretation: reject H0 -\> accept H1 -\> the variable has
+significant impact on dependent variable*
+
+-   p-value: 0.000652
+
+*Interpretation: p-value is \< threshold of significance and very small,
+therefore, the impact of variable income is statistically significant*
+
+------------------------------------------------------------------------
+
+## Task 8: Multiple Coefficient Test: State null hypothesis, significance level, test statistic, p value, and their interpretation
+
+***a) Determine the impact of Price of beef AND Price of Pork on Demand
+for chicken***
+
+```{r}
+library('carData')
+library('car')
+```
+
+**H0 = The variables price of pork and price of beef have no impact on
+the demand of chicken, ceteris paribus -\> all coefficients are equal to
+0**
+
+**H1 = at least one of the variables has a significant impact -\> at
+least one of the coefficients of the variables is ≠ 0**
+
+-   Significance level = 0.05
+
+-   F- test statistic: f-value = 1.1392
+
+-   df in numerator = number of linear constraints = 2 ; df in
+    denominator = n - k - 1 = 18
+
+-   c = critical value from F-statistic distribution table = 3.55
+
+-   F \< c
+
+*Interpretation: do NOT reject H0 -\> the impact of the variables are
+not significant*
+
+-   p-value: 0.3421
+
+*Interpretation: p \> significance level, therefore, probability of
+committing type I error is larger than the accepted level , meaning we
+can NOT reject H0, meaning none of the two variables (ppork and pbeef)
+are statistically significant*
+
+**Conclusion : Neither price of pork and price of beef have a
+significant impact on the demand of chicken, meaning we could take both
+of them out of the model.**
+
+***b) Determine the impact of income AND price of Pork on demand for
+chicken***
+
+```{r}
+linearHypothesis(mod1, c("log(income) = 0", "log(ppork) = 0"))
+```
+
+**H0 = The variables price of pork and income both have no impact on
+demand of chicken, ceteris paribus -\> all coefficients are equal to 0**
+
+**H1 = at least one of the variables has a significant impact -\> at
+least one of the coefficients of the variables is ≠ 0**
+
+-   Significance level = 0.05
+
+-   F-test statistic: F-value = 38.752
+
+-   F \> c
+
+*Interpretation: reject H0*
+
+-   p-value: 3.001e-07
+
+*Interpretation: p-value \< significance level, therefore, we can reject
+H0, meaning at least one of the two variables (ppork and income) is
+significant.*
+
+**Conclusion: we can not take both of them out of the model at the same
+time -\> individual t-tests have to be conducted to find out which
+variable has significant impact.**
+
+***c) Determine the impact of all variables on demand for chicken***
+
+```{r}
+linearHypothesis(mod1, c("log(income) = 0", "log(pchick) = 0","log(pbeef) = 0", "log(ppork) = 0"))
+```
+
+**H0 = All variables have no impact on demand of chicken -\> all
+coefficients are equal to 0**
+
+**H1 = At least one of the variables has a significant impact -\> at
+least one of the coefficients of the variables is ≠ 0**
+
+-   Significance level = 0.05
+
+-   F-test statistic: f-value = 249.93
+
+*Interpretation: F \> c -\> reject the H0*
+
+-   p-value: 1.667e-15
+
+*Interpretation: p-value \< significance level, therefore, we reject H0,
+meaning at least one of all variables is significant.*
+
+**Conclusion: we can not take all of them out of the model at the same
+time -\>** **individual t-tests have to be conducted to find out which
+variable has significant impact.**
+
+------------------------------------------------------------------------
+
+## Task 9: Quantification of the influence of disposable income, determine 99% confidence interval for the appropriate elasticity.
+
+***a) Quantification of the influence of disposable income***
+
+-   Since we have a linear model (linear in parameters), the influence
+    of income can be quantified using the estimated coefficient for
+    log(income)
+
+    ```         
+    0.34256
+    ```
+
+    , meaning a 1% increase in Income leads to an average 0.34% increase
+    in the consumption of chicken, ceteris paribus.
+
+-   Another way would be to measure the difference at two different
+    income levels and calculate the change in %. That should lead to the
+    same result:
+
+```{r}
+newdata <- list(income= c(500, 505),pchick=c(100,100),pbeef=c(100,100),ppork=c(100,100))
+pred<-exp(predict(mod1, newdata))
+print(pred)
+100*diff(log(pred))
+```
+
+***b) Determine 99% confidence interval for the appropriate
+elasticity***
+
+-   z-score computed with z-score table:
+
+    -   Al = (1+CL)/2
+
+    -   (1+0.99)/2
+
+    -   check table for corresponding row and column: row = 2.5, column
+        = 0.075: z\<-2.5+0.075 = 2.575
+
+-   z-score computed in R
+
+    ```{r results = 'hold'}
+    z<-qnorm(0.995) 
+    print (z)
+    ```
+
+    ```{r results='hold'}
+    x<-log(dat$income) 
+    n<-length(x) 
+    mean_x<-mean(x) 
+    sd_x<-sd(x)
+    ```
+
+    ```{r}
+    error<-z*sd_x/sqrt(n) 
+    ```
+
+-   Determine the lower bound of 99% confidence interval
+
+    ```{r results='hold'}
+    mean_x - error
+    ```
+
+-   Determine the upper bound of 99% confidence interval
+
+    ```{r result='hold'}
+    mean_x + error
+    ```
+
+**Conclusion: We are 99% confident that the true parameter of the mean
+of log(income) falls within the interval from 6.48 to 7.09.**
+
+------------------------------------------------------------------------
+
+## Task 10: Fit to simple regression models $Y=α_0*income^{a_1}$ , and $Y = α_0*pchick^{α2}$, compare α and ß
+
+```{r}
+mod1.10a<-lm(log(consum)~log(income), data=dat) 
+mod1.10b<-lm(log(consum)~log(pchick), data=dat) 
+```
+
+```{r}
+summary(mod1.10a) 
+```
+
+```{r}
+summary(mod1.10b) 
+```
+
+```{r}
+summary(mod1) 
+```
+
++----------------------+----------------------------+----------------------------+
+|                      | Coefficient of var. income | Coefficient of var. pchick |
++======================+============================+============================+
+| **Model 1.10a (α1)** | ```                        | \-                         |
+|                      |  0.32014                   |                            |
+|                      | ```                        |                            |
++----------------------+----------------------------+----------------------------+
+| **Model 1.10b (α2)** | \-                         | ```                        |
+|                      |                            | -0.06112                   |
+|                      |                            | ```                        |
++----------------------+----------------------------+----------------------------+
+| **Full model 1**     | ```                        | ```                        |
+|                      | 0.34256                    | -0.50459                   |
+|                      | ```                        | ```                        |
++----------------------+----------------------------+----------------------------+
+
+**Comparison:**
+
+-   *α1 compared to ß1*: In terms of simple model 10a, the coefficients
+    are pretty similar for the log-log model. It is, therefore, a good
+    model to explain the relationship between the income and the demand
+    for chicken.
+
+-   *α2 compared to ß2*:
+
+    -   There is a positive coefficient for variable price of chicken,
+        which would indicate that when the price goes up, consumption
+        goes up, which does not make sense in the real world. This is
+        the reason why simple model 10b is not a good model.
+
+    -   In the full model, the influence of income was factored into the
+        model, which then produced an effect on the coefficient of
+        variable price of chicken (which makes sense in the real world,
+        since whether or not prices matter depends largely on income),
+        making it a negative coefficient, and thus, makes mod1 a better
+        model to explain the relationship between the price of chicken
+        and the demand for chicken.
